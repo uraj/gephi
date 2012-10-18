@@ -76,7 +76,7 @@ public class SatelliteLayoutPanel extends JPanel {
         super();
         this.setLayout(new GridBagLayout());
         NodeRanker nr = new NodeRanker(layout);
-        dialog = new DialogDescriptor(nr, "Node Ranking");
+        dialog = new DialogDescriptor(nr, "Node List");
         GridBagConstraints constraints;
         
         ps = new PropertySheet();
@@ -104,7 +104,7 @@ public class SatelliteLayoutPanel extends JPanel {
         constraints.insets = new java.awt.Insets(5, 0, 5, 0);
         this.add(sep, constraints);
         
-        JButton button = new JButton("Show Node Rankings");
+        JButton button = new JButton("Show All Nodes");
         button.addActionListener(new AbstractAction() {
 
             @Override
