@@ -267,7 +267,8 @@ public class LayoutPanel extends javax.swing.JPanel implements PropertyChangeLis
                 propertySheet.setVisible(false);
                 layoutProvidedPanel.setVisible(true);
                 layoutProvidedPanel.removeAll();
-                layoutProvidedPanel.add(simplePanel);
+                layoutProvidedPanel.setLayout(new java.awt.BorderLayout());
+                layoutProvidedPanel.add(simplePanel, java.awt.BorderLayout.CENTER);
             } else {
                 layoutProvidedPanel.setVisible(false);
                 propertySheet.setVisible(true);
