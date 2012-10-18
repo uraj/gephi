@@ -1,6 +1,8 @@
 package ca.uwaterloo.asset.gephi.satellite;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.gephi.graph.api.DirectedGraph;
 import org.gephi.graph.api.Edge;
@@ -213,7 +215,7 @@ public class SatelliteLayout implements Layout {
             }
             
             Edge[] out = graph.getOutEdges(earth).toArray();
-
+            Collections.shuffle(Arrays.asList(out));
             int outCount = out.length;
             double baseRadian = 2 * Math.PI / outCount;
             earth.getNodeData().setX(0);
