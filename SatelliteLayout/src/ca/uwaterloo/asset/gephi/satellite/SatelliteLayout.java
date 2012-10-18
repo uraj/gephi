@@ -52,7 +52,7 @@ public class SatelliteLayout implements Layout {
         if (graphModel != null) {
             return graphModel.getGraph().getNodes().toArray();
         } else {
-            return new Node[]{};
+            return null;
         }
     }
     

@@ -10,12 +10,12 @@ import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
+import javax.swing.table.AbstractTableModel;
 import org.gephi.graph.api.Node;
 
 /**
@@ -24,7 +24,7 @@ import org.gephi.graph.api.Node;
  */
 public class NodeRanker extends JPanel {
     private SatelliteLayout layout;
-    private JList nodeList;
+    private JTable nodeTable;
     private String selectedNode;
     private Node[] graphNodes;
     private NodeWrapper[] wrapData;
@@ -49,18 +49,6 @@ public class NodeRanker extends JPanel {
         }
     }
     
-    private class ListListener implements ListSelectionListener {
-        @Override
-        public void valueChanged(ListSelectionEvent e) {
-            int index = nodeList.getSelectedIndex();
-            if (index == -1) {
-                selectedNode = "";
-            } else {
-                selectedNode = wrapData[index].node.getNodeData().getLabel();
-            }
-        }
-    }
-    
     private abstract class SortMetric implements Comparator<NodeWrapper>{
         public String title;
         public SortMetric(String title) {
@@ -74,7 +62,7 @@ public class NodeRanker extends JPanel {
     
     private SortMetric[] getSortMetrics() {
         List<SortMetric> mlist = new ArrayList<SortMetric>();
-        mlist.add(new SortMetric("Name") {
+        mlist.add(new SortMetric("Node Name") {
             @Override
             public NodeWrapper[] wrap(Node[] nodes) {
                 int size = nodes.length;
@@ -82,6 +70,7 @@ public class NodeRanker extends JPanel {
                 for (int i = 0; i < size; ++i) {
                     ret[i] = new NodeWrapper();
                     ret[i].node = nodes[i];
+                    ret[i].sortKey = null;
                 }
                 return ret;
             }
@@ -95,15 +84,47 @@ public class NodeRanker extends JPanel {
         });
         return mlist.toArray(new SortMetric[0]);
     }
+    
+    private class NodeTableModel extends AbstractTableModel {
+        NodeWrapper[] data;
+        private final String[] COL_NAMES = {"Node", "Metric Value"};
+        public NodeTableModel(NodeWrapper[] data) {
+            this.data = data;
+        }
+        @Override
+        public int getRowCount() {
+            return data.length;
+        }
+        @Override
+        public String getColumnName(int col) {
+            return COL_NAMES[col];
+        }
+        @Override
+        public int getColumnCount() {
+            return COL_NAMES.length;
+        }
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            if (columnIndex == 0) {
+                return data[rowIndex].node.getNodeData().getLabel();
+            } else {
+                return data[rowIndex].sortKey;
+            }    
+        }
+        @Override
+        public boolean isCellEditable(int row, int col) { return false; }
+    }
+    
+    
 
     public NodeRanker(SatelliteLayout layout) {
         super();
         this.layout = layout;
-        this.graphNodes = layout.getNodes();
+        this.graphNodes = null;
         
         JPanel ctrPanel = new JPanel();
         ctrPanel.setLayout(new FlowLayout());
-        ctrPanel.add(new JLabel("<html><b>Sort by:</b></html>"));
+        ctrPanel.add(new JLabel("<html><b>Rank by:</b></html>"));
         JComboBox ctrBox = new JComboBox(getSortMetrics());
         ctrBox.setSelectedItem(null);
         ctrBox.addActionListener(new AbstractAction() {
@@ -111,18 +132,36 @@ public class NodeRanker extends JPanel {
             public void actionPerformed(ActionEvent e) {
                 JComboBox sortBox = (JComboBox)e.getSource();
                 SortMetric metric = (SortMetric)sortBox.getSelectedItem();
+                if (graphNodes == null || graphNodes.length == 0) {
+                    graphNodes = NodeRanker.this.layout.getNodes();
+                }
                 wrapData = metric.wrap(graphNodes);
                 Arrays.sort(wrapData, metric);
-                nodeList.setListData(wrapData);
+                //nodeList.setListData(wrapData);
+                nodeTable.setModel(new NodeTableModel(wrapData));
             }
         });
         ctrPanel.add(ctrBox);
         
-        this.nodeList = new JList();
-        this.nodeList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        this.nodeList.addListSelectionListener(new ListListener ());
-        this.nodeList.setVisible(true);
-        JScrollPane listScroller = new JScrollPane(nodeList);
+        this.nodeTable = new JTable() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                super.valueChanged(e);
+                int index = this.getSelectedRow();
+                if (index == -1) {
+                    selectedNode = "";
+                } else {
+                    selectedNode = wrapData[index].node.getNodeData().getLabel();
+                }
+            }
+        };
+        nodeTable.setCellSelectionEnabled(false);
+        nodeTable.setRowSelectionAllowed(true);
+        nodeTable.setColumnSelectionAllowed(false);
+        nodeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        nodeTable.setVisible(true);
+        nodeTable.getSelectionModel().addListSelectionListener(nodeTable);
+        JScrollPane listScroller = new JScrollPane(nodeTable);
         
         this.setLayout(new BorderLayout());
         this.add(ctrPanel, BorderLayout.NORTH);
