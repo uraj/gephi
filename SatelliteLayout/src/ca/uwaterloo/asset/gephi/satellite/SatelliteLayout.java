@@ -1,4 +1,4 @@
-    package ca.uwaterloo.asset.gephi.satellite;
+package ca.uwaterloo.asset.gephi.satellite;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -301,8 +301,12 @@ public class SatelliteLayout implements Layout {
         }
         graph.writeUnlock();
     }
-    
+        
     public GraphModel getGraphModel() {
-        return graphModel.copy();
+        if (graphModel == null) {
+            return null;
+        } else {
+            return graphModel;
+        }
     }
 }

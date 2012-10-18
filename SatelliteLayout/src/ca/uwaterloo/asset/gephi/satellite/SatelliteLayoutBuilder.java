@@ -60,7 +60,6 @@ public class SatelliteLayoutBuilder implements LayoutBuilder {
                 if (layout instanceof SatelliteLayout) {
                     return constructSatellitePanel((SatelliteLayout)layout);
                 } else {
-                    System.err.println("Return null");
                     return null;
                 }
             }
