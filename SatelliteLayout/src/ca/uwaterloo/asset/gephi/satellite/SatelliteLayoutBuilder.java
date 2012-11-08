@@ -15,7 +15,7 @@ import org.openide.util.lookup.ServiceProvider;
 public class SatelliteLayoutBuilder implements LayoutBuilder {
     private static final String DESC =
             "Pick one central node in the graph " + 
-            "and layout all its sucessors (directed graph) " +
+            "and layout all its successors or predecessors (directed graph), " +
             "or neibours (undirected graph) around it.";
     
     @Override

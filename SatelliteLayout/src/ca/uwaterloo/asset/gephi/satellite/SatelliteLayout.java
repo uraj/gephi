@@ -20,6 +20,10 @@ import org.openide.util.Exceptions;
  * @author Pei Wang <p56wang@uwaterloo.ca>
  */
 public class SatelliteLayout implements Layout {
+    public enum Direction {
+        Successor,
+        Predecessor;
+    }
 
     //Architecture
     private final LayoutBuilder builder;
@@ -27,9 +31,12 @@ public class SatelliteLayout implements Layout {
     //Flags
     private boolean executing = false;
     //Properties
+    private Direction depType;
     private String earthLabel;
     private int areaSize;
     private float threshold;
+    
+    private static final Direction DEFAULT_DEP_TYPE = Direction.Successor;
     
     private static final float AMPLIFY_SCOPE = 0.5f;
     
@@ -81,6 +88,7 @@ public class SatelliteLayout implements Layout {
     
     @Override
     public void resetPropertiesValues() {
+        depType = DEFAULT_DEP_TYPE;
         earthLabel = DEFAULT_EARTH;
         areaSize = DEFAULT_AREA;
         threshold = DEFAULT_THRES;
@@ -124,7 +132,13 @@ public class SatelliteLayout implements Layout {
     public LayoutProperty[] getProperties() {
         List<LayoutProperty> properties = new ArrayList<LayoutProperty>();
         final String SATELLITELAYOUT = "Satellite Layout";
-        try {    
+        try {
+            properties.add(LayoutProperty.createProperty(
+                    this, Direction.class,
+                    "Satellites type",
+                    SATELLITELAYOUT,
+                    "Choose to show successors or predecessors of the Earth",
+                    "getDepType", "setDepType"));
             properties.add(LayoutProperty.createProperty(
                     this, Integer.class,
                     "Area size",
@@ -152,6 +166,14 @@ public class SatelliteLayout implements Layout {
     @Override
     public LayoutBuilder getBuilder() {
         return builder;
+    }
+    
+    public Direction getDepType() {
+        return depType;
+    }
+
+    public void setDepType(Direction dir) {
+        this.depType = dir;
     }
 
     public String getEarth() {
@@ -187,6 +209,7 @@ public class SatelliteLayout implements Layout {
         Node earth = null;
         int nodeCount = graph.getNodeCount();
         Node[] nodes = graph.getNodes().toArray();
+        Edge[] edges, prunedEdges;
         for (int i = 0; i < nodeCount; ++i) {
             Node node = nodes[i];
             if (earthLabel.equals(node.getNodeData().getLabel())) {
@@ -199,39 +222,70 @@ public class SatelliteLayout implements Layout {
             graph.clear();
         } else {
             int earthId = earth.getId();
-            for (int i = 0; i < nodeCount; ++i) {
-                Node node = nodes[i];
-                if (node.getId() != earthId && !graph.isSuccessor(earth, node)) {
-                    graph.removeNode(node);
+            int edgeCount;
+            if (depType == Direction.Successor) {
+                for (int i = 0; i < nodeCount; ++i) {
+                    Node node = nodes[i];
+                    if (node.getId() != earthId && !graph.isSuccessor(earth, node)) {   
+                        graph.removeNode(node);
+                    }
                 }
-            }
-            int edgeCount = graph.getEdgeCount();
-            Edge[] edges = graph.getEdges().toArray();
-            for (int i = 0; i < edgeCount; ++i) {
-                Edge edge = edges[i];
-                if (edge.getSource().getId() != earth.getId()) {
-                    graph.removeEdge(edge);
+                edgeCount = graph.getEdgeCount();
+                edges = graph.getEdges().toArray();
+                for (int i = 0; i < edgeCount; ++i) {
+                    Edge edge = edges[i];
+                    if (edge.getSource().getId() != earth.getId()) {
+                        graph.removeEdge(edge);
+                    }
                 }
+                prunedEdges = graph.getOutEdges(earth).toArray();
+            } else {
+                for (int i = 0; i < nodeCount; ++i) {
+                    Node node = nodes[i];
+                
+                    if (node.getId() != earthId && !graph.isPredecessor(earth, node)) {   
+                        graph.removeNode(node);
+                    }
+                }
+                edgeCount = graph.getEdgeCount();
+                edges = graph.getEdges().toArray();
+                for (int i = 0; i < edgeCount; ++i) {
+                    Edge edge = edges[i];
+                    if (edge.getTarget().getId() != earth.getId()) {
+                        graph.removeEdge(edge);
+                    }
+                }
+                prunedEdges = graph.getInEdges(earth).toArray();
             }
-            
-            Edge[] out = graph.getOutEdges(earth).toArray();
-            Collections.shuffle(Arrays.asList(out));
-            int outCount = out.length;
-            double baseRadian = 2 * Math.PI / outCount;
+
+            Collections.shuffle(Arrays.asList(prunedEdges));
+            int prunedCount = prunedEdges.length;
+            double baseRadian = 2 * Math.PI / prunedCount;
             earth.getNodeData().setX(0);
             earth.getNodeData().setY(0);
-            for (int i = 0; i < outCount; i++) {
-                Node node = out[i].getTarget();
-                float weight = out[i].getWeight();
+            float maxW = 0;
+            for (int i = 0; i < prunedCount; ++i) {
+                float curW = prunedEdges[i].getWeight();
+                maxW = curW > maxW ? curW : maxW;
+            }
+            
+            for (int i = 0; i < prunedCount; ++i) {
+                Node node;
+                if (depType == Direction.Successor) {
+                    node = prunedEdges[i].getTarget();
+                } else {
+                    node = prunedEdges[i].getSource();
+                }
+                float weight = prunedEdges[i].getWeight();
                 float radius, x, y;
                 if (weight < threshold) {
                     radius = (threshold - weight) / threshold * AMPLIFY_SCOPE;
                     radius += 1 - AMPLIFY_SCOPE;
                     radius *= areaSize;
                 } else {
-                    radius = MAX_WEIGHT - threshold - weight;
+                    radius = maxW - threshold - weight;
                     radius *= 1 - AMPLIFY_SCOPE;
-                    radius *= areaSize / (MAX_WEIGHT - threshold);
+                    radius *= areaSize / (maxW - threshold);
                 }
                 x = (float)(radius * Math.cos(baseRadian * i));
                 y = (float)(radius * Math.sin(baseRadian * i));

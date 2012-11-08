@@ -28,10 +28,10 @@ public class NodeRanker extends JPanel {
     private String selectedNode;
     private Node[] graphNodes;
     private NodeWrapper[] wrapData;
-    
+        
     private class NodeWrapper {
         public Node node;
-        public Object sortKey;
+        public Comparable sortKey;
         
         public NodeWrapper() {
             node = null;
@@ -58,11 +58,16 @@ public class NodeRanker extends JPanel {
         @Override
         public String toString() { return title; }
         abstract public NodeWrapper[] wrap(Node[] node);
+        
+        @Override
+        public int compare(NodeWrapper o1, NodeWrapper o2) {
+            return o1.sortKey.compareTo(o2.sortKey);
+        }
     }
     
     private SortMetric[] getSortMetrics() {
         List<SortMetric> mlist = new ArrayList<SortMetric>();
-        mlist.add(new SortMetric("Node Name") {
+        mlist.add(new SortMetric("Lib Name") {
             @Override
             public NodeWrapper[] wrap(Node[] nodes) {
                 int size = nodes.length;
@@ -70,16 +75,26 @@ public class NodeRanker extends JPanel {
                 for (int i = 0; i < size; ++i) {
                     ret[i] = new NodeWrapper();
                     ret[i].node = nodes[i];
-                    ret[i].sortKey = null;
+                    ret[i].sortKey = nodes[i].getNodeData().getLabel();
                 }
                 return ret;
             }
-
+        });
+        mlist.add(new SortMetric("Lib Utilization") {
             @Override
-            public int compare(NodeWrapper o1, NodeWrapper o2) {
-                return o1.node.getNodeData().getLabel()
-                       .compareTo
-                       (o2.node.getNodeData().getLabel());
+            public NodeWrapper[] wrap(Node[] nodes) {
+                int size = nodes.length;
+                NodeWrapper[] ret = new NodeWrapper[size];
+                for (int i = 0; i < size; ++i) {
+                    ret[i] = new NodeWrapper();
+                    ret[i].node = nodes[i];
+                    ret[i].sortKey =  Float.valueOf(
+                                (String)nodes[i]
+                                .getNodeData()
+                                .getAttributes()
+                                .getValue("utilization"));
+                }
+                return ret;
             }
         });
         return mlist.toArray(new SortMetric[0]);
@@ -87,7 +102,7 @@ public class NodeRanker extends JPanel {
     
     private class NodeTableModel extends AbstractTableModel {
         NodeWrapper[] data;
-        private final String[] COL_NAMES = {"Node", "Metric Value"};
+        private final String[] COL_NAMES = {"No.", "Library", "Metric Value"};
         public NodeTableModel(NodeWrapper[] data) {
             this.data = data;
         }
@@ -105,10 +120,15 @@ public class NodeRanker extends JPanel {
         }
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            if (columnIndex == 0) {
-                return data[rowIndex].node.getNodeData().getLabel();
-            } else {
-                return data[rowIndex].sortKey;
+            switch(columnIndex) {
+                case 0:
+                    return rowIndex;
+                case 1:
+                    return data[rowIndex].node.getNodeData().getLabel();
+                case 2:
+                    return data[rowIndex].sortKey;
+                default:
+                    return null;
             }    
         }
         @Override
@@ -139,6 +159,7 @@ public class NodeRanker extends JPanel {
                 Arrays.sort(wrapData, metric);
                 //nodeList.setListData(wrapData);
                 nodeTable.setModel(new NodeTableModel(wrapData));
+                nodeTable.getColumnModel().getColumn(0).setPreferredWidth(10);
             }
         });
         ctrPanel.add(ctrBox);
