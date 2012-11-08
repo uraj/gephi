@@ -198,7 +198,7 @@ public class SatelliteLayout implements Layout {
     }
 
     public void setThreshold(Float thes) {
-        this.threshold = thes < MAX_WEIGHT ? thes : MAX_WEIGHT;
+        thes = thes < MAX_WEIGHT ? thes : MAX_WEIGHT;
         this.threshold = thes > MIN_WEIGHT ? thes : MIN_WEIGHT;
     }
     
@@ -268,7 +268,7 @@ public class SatelliteLayout implements Layout {
                 float curW = prunedEdges[i].getWeight();
                 maxW = curW > maxW ? curW : maxW;
             }
-            
+            setThreshold(threshold > maxW ? maxW : threshold);
             for (int i = 0; i < prunedCount; ++i) {
                 Node node;
                 if (depType == Direction.Successor) {
@@ -283,9 +283,10 @@ public class SatelliteLayout implements Layout {
                     radius += 1 - AMPLIFY_SCOPE;
                     radius *= areaSize;
                 } else {
-                    radius = maxW - threshold - weight;
-                    radius *= 1 - AMPLIFY_SCOPE;
-                    radius *= areaSize / (maxW - threshold);
+                    radius = (maxW - weight) / (maxW - threshold);
+                    radius *= (1 - AMPLIFY_SCOPE) / 2;
+                    radius += (1 - AMPLIFY_SCOPE) / 2;
+                    radius *= areaSize;
                 }
                 x = (float)(radius * Math.cos(baseRadian * i));
                 y = (float)(radius * Math.sin(baseRadian * i));
